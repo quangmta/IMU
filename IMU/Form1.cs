@@ -30,7 +30,7 @@ namespace IMU
         private DataFrame dataRx;
         string typeAxis;
         bool flagConnect = false;
-        bool flagDataReceived = false;
+        bool flagUpdateAxis = false;
         byte addressCode = 0x00;
         //bool checkActivate = false;
         int checksum;
@@ -46,7 +46,11 @@ namespace IMU
             InitializeComponent();
             comboBoxBaudRate.SelectedItem = "9600";
             getAvailablePorts();
-            if (comboBoxCOM.Items.Count != 0) comboBoxCOM.SelectedIndex = 0;
+            if (comboBoxCOM.Items.Count != 0)
+            {
+                comboBoxCOM.SelectedIndex = 0;
+                buttonConnect.Enabled = true;
+            } 
             comboBoxTypeAxis.SelectedIndex = 0;
             comboBoxBaudRateSet.SelectedItem = "9600";
             comboBoxZeroSet.SelectedIndex = 0;
@@ -226,7 +230,7 @@ namespace IMU
         private void serialPort1_DataReceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
         {
             int NumOfUnreadBytes = serialPort1.BytesToRead;
-            //bool Received = false;
+            //bool Received = false;                flagDataReceived = true;
             byte[] MsgBuffer = new byte[NumOfUnreadBytes];
             serialPort1.Read(MsgBuffer, 0, NumOfUnreadBytes); //wiped after if
             checksum = 0;
@@ -237,7 +241,6 @@ namespace IMU
 
             if (MsgBuffer[0] == 0x77)
             {
-                flagDataReceived = true;
                 string bufffer = ByteArrayToHexString(MsgBuffer);
                 if (checkBoxActivate.Checked)
                 {
@@ -255,12 +258,34 @@ namespace IMU
                 }
                 dataRx.CheckSum = MsgBuffer[NumOfUnreadBytes - 1];
                 processingData(dataRx);
-                labelX.Invoke(new Action(()=> labelX.Text = XValue.ToString()));
-                labelY.Invoke(new Action(() => labelY.Text = YValue.ToString()));
-                labelZ.Invoke(new Action(() => labelZ.Text = ZValue.ToString()));
+                if (flagUpdateAxis)
+                {
+                    labelX.Invoke(new Action(() => labelX.Text = XValue.ToString()));
+                    labelY.Invoke(new Action(() => labelY.Text = YValue.ToString()));
+                    labelZ.Invoke(new Action(() => labelZ.Text = ZValue.ToString()));
+                    flagUpdateAxis = false;
+                }
 
             }
 
+        }
+
+        void processingData(DataFrame dataRx)
+        {
+            switch (dataRx.Command)
+            {
+
+                case 0x84: //read axises angle
+                    XValue = CalAngle(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
+                    YValue = CalAngle(new byte[] { dataRx.Data[3], dataRx.Data[4], dataRx.Data[5] });
+                    ZValue = CalAngle(new byte[] { dataRx.Data[6], dataRx.Data[7], dataRx.Data[8] });
+                    flagUpdateAxis = true;
+                    break;
+                case 0x1F: //query current address
+                    addressCode = dataRx.Data[0];
+                    textBoxGetAddress.Invoke(new Action(() => textBoxGetAddress.Text = addressCode.ToString("X2")));
+                    break;
+            }
         }
 
         private void Data_TextChanged(object sender, EventArgs e)
@@ -319,8 +344,16 @@ namespace IMU
                 {
                     comboBoxCOM.Items.Clear();
                     getAvailablePorts();
-                    if (comboBoxCOM.Items.Count != 0) comboBoxCOM.SelectedIndex = 0;
-                    else comboBoxCOM.Text = "";
+                    if (comboBoxCOM.Items.Count != 0)
+                    {
+                        comboBoxCOM.SelectedIndex = 0;
+                        buttonConnect.Enabled = true;
+                    }
+                    else
+                    {
+                        buttonConnect.Enabled = false;
+                        comboBoxCOM.Text = "";
+                    } 
                 }
                 catch (Exception ex)
                 {
@@ -377,18 +410,6 @@ namespace IMU
             return dataAngle[0] == 0x00?angle:-angle;
         }
 
-        void processingData(DataFrame dataRx)
-        {
-            switch (dataRx.Command)
-            {
-
-                case 0x84: //read axises angle
-                    XValue = CalAngle(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
-                    YValue = CalAngle(new byte[] { dataRx.Data[3], dataRx.Data[4], dataRx.Data[5] });
-                    ZValue = CalAngle(new byte[] { dataRx.Data[6], dataRx.Data[7], dataRx.Data[8] });
-                    break;
-            }
-        }
 
         private void checkBoxActivate_CheckedChanged(object sender, EventArgs e)
         {
@@ -518,9 +539,14 @@ namespace IMU
             }
         }
 
+        private void buttonGetAddress_Click(object sender, EventArgs e)
+        {
+            sendData(new byte[] { 0x77, 0x04, 0x00, 0x1F, 0x23 });
+        }
+
         private void buttonSetZero_Click(object sender, EventArgs e)
         {
-
+            
         }
 
         private void buttonSetOutput_Click(object sender, EventArgs e)

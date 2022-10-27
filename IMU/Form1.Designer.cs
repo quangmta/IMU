@@ -75,6 +75,7 @@ namespace IMU
             this.buttonClear = new System.Windows.Forms.Button();
             this.tabPage1 = new System.Windows.Forms.TabPage();
             this.groupBox6 = new System.Windows.Forms.GroupBox();
+            this.buttonSave = new System.Windows.Forms.Button();
             this.comboBoxOutputSet = new System.Windows.Forms.ComboBox();
             this.comboBoxZeroSet = new System.Windows.Forms.ComboBox();
             this.comboBoxBaudRateSet = new System.Windows.Forms.ComboBox();
@@ -91,6 +92,9 @@ namespace IMU
             this.labelSetState = new System.Windows.Forms.Label();
             this.label8 = new System.Windows.Forms.Label();
             this.label15 = new System.Windows.Forms.Label();
+            this.groupBoxAddress = new System.Windows.Forms.GroupBox();
+            this.textBoxGetAddress = new System.Windows.Forms.TextBox();
+            this.buttonGetAddress = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.tabControlData.SuspendLayout();
             this.tabPageThreeAxis.SuspendLayout();
@@ -101,6 +105,7 @@ namespace IMU
             this.tabPage1.SuspendLayout();
             this.groupBox6.SuspendLayout();
             this.groupBox5.SuspendLayout();
+            this.groupBoxAddress.SuspendLayout();
             this.SuspendLayout();
             // 
             // serialPort1
@@ -171,6 +176,7 @@ namespace IMU
             // 
             // buttonConnect
             // 
+            this.buttonConnect.Enabled = false;
             this.buttonConnect.Location = new System.Drawing.Point(41, 102);
             this.buttonConnect.Name = "buttonConnect";
             this.buttonConnect.Size = new System.Drawing.Size(104, 40);
@@ -268,7 +274,7 @@ namespace IMU
             // 
             this.labelZ.AutoSize = true;
             this.labelZ.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.labelZ.Location = new System.Drawing.Point(88, 246);
+            this.labelZ.Location = new System.Drawing.Point(105, 236);
             this.labelZ.Name = "labelZ";
             this.labelZ.Size = new System.Drawing.Size(24, 25);
             this.labelZ.TabIndex = 11;
@@ -278,7 +284,7 @@ namespace IMU
             // 
             this.labelY.AutoSize = true;
             this.labelY.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.labelY.Location = new System.Drawing.Point(88, 191);
+            this.labelY.Location = new System.Drawing.Point(105, 181);
             this.labelY.Name = "labelY";
             this.labelY.Size = new System.Drawing.Size(24, 25);
             this.labelY.TabIndex = 12;
@@ -288,7 +294,7 @@ namespace IMU
             // 
             this.labelX.AutoSize = true;
             this.labelX.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.labelX.Location = new System.Drawing.Point(90, 131);
+            this.labelX.Location = new System.Drawing.Point(107, 121);
             this.labelX.Name = "labelX";
             this.labelX.Size = new System.Drawing.Size(24, 25);
             this.labelX.TabIndex = 13;
@@ -298,7 +304,7 @@ namespace IMU
             // 
             this.label5.AutoSize = true;
             this.label5.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label5.Location = new System.Drawing.Point(36, 245);
+            this.label5.Location = new System.Drawing.Point(53, 235);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(38, 25);
             this.label5.TabIndex = 10;
@@ -308,7 +314,7 @@ namespace IMU
             // 
             this.label4.AutoSize = true;
             this.label4.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label4.Location = new System.Drawing.Point(38, 191);
+            this.label4.Location = new System.Drawing.Point(55, 181);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(39, 25);
             this.label4.TabIndex = 10;
@@ -318,7 +324,7 @@ namespace IMU
             // 
             this.label3.AutoSize = true;
             this.label3.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label3.Location = new System.Drawing.Point(36, 131);
+            this.label3.Location = new System.Drawing.Point(53, 121);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(40, 25);
             this.label3.TabIndex = 10;
@@ -569,6 +575,7 @@ namespace IMU
             // 
             // groupBox6
             // 
+            this.groupBox6.Controls.Add(this.buttonSave);
             this.groupBox6.Controls.Add(this.comboBoxOutputSet);
             this.groupBox6.Controls.Add(this.comboBoxZeroSet);
             this.groupBox6.Controls.Add(this.comboBoxBaudRateSet);
@@ -587,6 +594,15 @@ namespace IMU
             this.groupBox6.TabIndex = 1;
             this.groupBox6.TabStop = false;
             this.groupBox6.Text = "Set";
+            // 
+            // buttonSave
+            // 
+            this.buttonSave.Location = new System.Drawing.Point(454, 181);
+            this.buttonSave.Name = "buttonSave";
+            this.buttonSave.Size = new System.Drawing.Size(75, 23);
+            this.buttonSave.TabIndex = 2;
+            this.buttonSave.Text = "Save";
+            this.buttonSave.UseVisualStyleBackColor = true;
             // 
             // comboBoxOutputSet
             // 
@@ -759,11 +775,41 @@ namespace IMU
             this.label15.TabIndex = 5;
             this.label15.Text = "Bewis General Cominication Protocol Interface";
             // 
+            // groupBoxAddress
+            // 
+            this.groupBoxAddress.Controls.Add(this.textBoxGetAddress);
+            this.groupBoxAddress.Controls.Add(this.buttonGetAddress);
+            this.groupBoxAddress.Location = new System.Drawing.Point(12, 269);
+            this.groupBoxAddress.Name = "groupBoxAddress";
+            this.groupBoxAddress.Size = new System.Drawing.Size(176, 76);
+            this.groupBoxAddress.TabIndex = 6;
+            this.groupBoxAddress.TabStop = false;
+            this.groupBoxAddress.Text = "Address";
+            // 
+            // textBoxGetAddress
+            // 
+            this.textBoxGetAddress.Location = new System.Drawing.Point(15, 35);
+            this.textBoxGetAddress.Name = "textBoxGetAddress";
+            this.textBoxGetAddress.ReadOnly = true;
+            this.textBoxGetAddress.Size = new System.Drawing.Size(56, 22);
+            this.textBoxGetAddress.TabIndex = 8;
+            // 
+            // buttonGetAddress
+            // 
+            this.buttonGetAddress.Location = new System.Drawing.Point(82, 30);
+            this.buttonGetAddress.Name = "buttonGetAddress";
+            this.buttonGetAddress.Size = new System.Drawing.Size(75, 31);
+            this.buttonGetAddress.TabIndex = 7;
+            this.buttonGetAddress.Text = "Get";
+            this.buttonGetAddress.UseVisualStyleBackColor = true;
+            this.buttonGetAddress.Click += new System.EventHandler(this.buttonGetAddress_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(868, 546);
+            this.Controls.Add(this.groupBoxAddress);
             this.Controls.Add(this.label15);
             this.Controls.Add(this.tabControlData);
             this.Controls.Add(this.BtnExit);
@@ -788,6 +834,8 @@ namespace IMU
             this.groupBox6.PerformLayout();
             this.groupBox5.ResumeLayout(false);
             this.groupBox5.PerformLayout();
+            this.groupBoxAddress.ResumeLayout(false);
+            this.groupBoxAddress.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -856,6 +904,10 @@ namespace IMU
         private System.Windows.Forms.Button buttonStart;
         private System.Windows.Forms.RichTextBox richTextBoxSend;
         private System.Windows.Forms.RichTextBox richTextBoxReceive;
+        private System.Windows.Forms.Button buttonSave;
+        private System.Windows.Forms.GroupBox groupBoxAddress;
+        private System.Windows.Forms.TextBox textBoxGetAddress;
+        private System.Windows.Forms.Button buttonGetAddress;
     }
 }
 
