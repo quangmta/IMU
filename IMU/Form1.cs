@@ -32,6 +32,7 @@ namespace IMU
         bool flagConnect = false;
         bool flagUpdateAxis = false;
         byte addressCode = 0x00;
+        bool flagSuccess = false;
         //bool checkActivate = false;
         int checksum;
         private readonly Color[] LogMsgTypeColor = { Color.Blue, Color.Green, Color.Black, Color.Orange, Color.Red };
@@ -58,7 +59,7 @@ namespace IMU
             comboBoxTypeAxis.SelectedIndex = 0;
         }
 
-        void getAvailablePorts()
+        private void getAvailablePorts()
         {
             //this code gets the name of the port and port number
             string[] lPorts = SerialPort.GetPortNames();
@@ -77,60 +78,58 @@ namespace IMU
             }
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        private void sendData(string strHex)
         {
-
-        }
-
-        private void label2_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void textBox2_TextChanged(object sender, EventArgs e)
-        {
-
-        }
-
-        private void BtnExit_Click(object sender, EventArgs e)
-        {
-            Application.Exit();
-        }
-
-        private void buttonConnect_Click(object sender, EventArgs e)
-        {
-            serialPort1.PortName = comboBoxCOM.Text;
-            serialPort1.BaudRate = Convert.ToInt32(comboBoxBaudRate.Text);
-            if (!serialPort1.IsOpen)
+            if (serialPort1.IsOpen)
             {
                 try
                 {
-                    serialPort1.Open();
-                    buttonConnect.Visible = false;
-                    buttonDisconnect.Visible = true;
-                    comboBoxCOM.Enabled = false;
-                    comboBoxBaudRate.Enabled = false;
-                    flagConnect = true;
+                    // Convert the user's string of hex digits (ex: B4 CA E2) to a byte array
+                    byte[] data = HexStringToByteArray(strHex);
+                    //txtSendData.Show();
+                    // Send the binary data out the port
+                    serialPort1.Write(data, 0, data.Length);
+
+                    // Show the hex digits on in the terminal window
+                    DateTime dt = DateTime.Now;
+                    String dtn = dt.ToShortTimeString();
+                    Log(LogMsgType.Outgoing, "[" + dtn + "] " + "Send: " + ByteArrayToHexString(data) + "\n", "SEND");
 
                 }
-                catch
+                catch (FormatException)
                 {
-                    MessageBox.Show($"Can't open {comboBoxCOM.Text}");
+                    // Inform the user if the hex string was not properly formatted
+                    Log(LogMsgType.Error, "Not properly formatted hex string: " + richTextBoxSend.Text + "\n", "SEND");
                 }
             }
+            else
+                MessageBox.Show("Please open the serial port!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
-
-        private void buttonDisconnect_Click(object sender, EventArgs e)
+        private void sendData(byte[] byteHext)
         {
-            serialPort1.DiscardInBuffer();
-            serialPort1.DiscardOutBuffer();
-            serialPort1.Close();
-            serialPort1.Dispose();
-            buttonConnect.Visible = true;
-            buttonDisconnect.Visible = false;
-            comboBoxCOM.Enabled = true;
-            comboBoxBaudRate.Enabled = true;
-            flagConnect = false;
+            if (serialPort1.IsOpen)
+            {
+                try
+                {
+                    // Convert the user's string of hex digits (ex: B4 CA E2) to a byte array
+                    //txtSendData.Show();
+                    // Send the binary data out the port
+                    serialPort1.Write(byteHext, 0, byteHext.Length);
+
+                    // Show the hex digits on in the terminal window
+                    DateTime dt = DateTime.Now;
+                    String dtn = dt.ToShortTimeString();
+                    Log(LogMsgType.Outgoing, "[" + dtn + "] " + "Send: " + ByteArrayToHexString(byteHext) + "\n", "SEND");
+
+                }
+                catch (FormatException)
+                {
+                    // Inform the user if the hex string was not properly formatted
+                    Log(LogMsgType.Error, "Not properly formatted hex string: " + richTextBoxSend.Text + "\n", "SEND");
+                }
+            }
+            else
+                MessageBox.Show("Please open the serial port!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         private byte[] HexStringToByteArray(string s)
@@ -227,6 +226,76 @@ namespace IMU
             //return data;
         }
 
+
+        private double CalAngle(byte[] dataAngle)
+        {
+            double angle = 0;
+            angle = Convert.ToDouble(dataAngle[1].ToString("X2")[1])*100+Convert.ToDouble(dataAngle[1].ToString("X2")) + Convert.ToDouble(dataAngle[2].ToString("X2")) / 100;
+            return dataAngle[0]>>4 == 0x0 ? angle : -angle;
+        }
+
+        private double CalAcc(byte[] dataAngle)
+        {
+            double acc = 0;
+            acc = Convert.ToDouble(dataAngle[1].ToString("X2")[1])+ Convert.ToDouble(dataAngle[1].ToString("X2"))/100 + Convert.ToDouble(dataAngle[2].ToString("X2")) / 10000;
+            return dataAngle[0]>>4 == 0x0 ? acc : -acc;
+        }
+
+        private void processingData(DataFrame dataRx)
+        {
+            switch (dataRx.Command)
+            {
+                //2.1 Read PITCH angle command 77 04 00 01 05
+                case 0x81:
+                    XValue = CalAngle(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
+                    break;
+                //2.2 Read ROLL angle 77 04 02 06
+                case 0x82:
+                    YValue = XValue = CalAngle(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
+                    break;
+                //2.4 read axises angle
+                case 0x84: 
+                    XValue = CalAngle(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
+                    YValue = CalAngle(new byte[] { dataRx.Data[3], dataRx.Data[4], dataRx.Data[5] });
+                    ZValue = CalAngle(new byte[] { dataRx.Data[6], dataRx.Data[7], dataRx.Data[8] });
+                    flagUpdateAxis = true;
+                    break;
+                //2.5 Set baudrate
+                case 0x8B:
+                    flagSuccess = (dataRx.Data[0] == 0x00) ? true : false;
+                    break;
+                //2.5 Set module address
+                case 0x8F:
+                    flagSuccess = (dataRx.Data[0] == 0x00) ? true : false;
+                    break;
+                //2.6 Query current address
+                case 0x1F: 
+                    addressCode = dataRx.Data[0];
+                    textBoxGetAddress.Invoke(new Action(() => textBoxGetAddress.Text = addressCode.ToString("X2")));
+                    break;
+                //2.7 Set output frequency
+                case 0x8C:
+                    flagSuccess = (dataRx.Data[0] == 0x00) ? true : false;
+                    break;
+                //2.8 Query gravitational acceleration g
+                case 0x54:
+                    XValue = CalAcc(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
+                    YValue = CalAcc(new byte[] { dataRx.Data[3], dataRx.Data[4], dataRx.Data[5] });
+                    ZValue = CalAcc(new byte[] { dataRx.Data[6], dataRx.Data[7], dataRx.Data[8] });
+                    flagUpdateAxis = true;
+                    break;
+                //2.9 Query angular velocity
+                case 0x50:
+                    XValue = CalAngle(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
+                    YValue = CalAngle(new byte[] { dataRx.Data[3], dataRx.Data[4], dataRx.Data[5] });
+                    ZValue = CalAngle(new byte[] { dataRx.Data[6], dataRx.Data[7], dataRx.Data[8] });
+                    flagUpdateAxis = true;
+                    break;
+                //2.10 
+
+            }
+        }
+
         private void serialPort1_DataReceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
         {
             int NumOfUnreadBytes = serialPort1.BytesToRead;
@@ -270,29 +339,6 @@ namespace IMU
 
         }
 
-        void processingData(DataFrame dataRx)
-        {
-            switch (dataRx.Command)
-            {
-
-                case 0x84: //read axises angle
-                    XValue = CalAngle(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
-                    YValue = CalAngle(new byte[] { dataRx.Data[3], dataRx.Data[4], dataRx.Data[5] });
-                    ZValue = CalAngle(new byte[] { dataRx.Data[6], dataRx.Data[7], dataRx.Data[8] });
-                    flagUpdateAxis = true;
-                    break;
-                case 0x1F: //query current address
-                    addressCode = dataRx.Data[0];
-                    textBoxGetAddress.Invoke(new Action(() => textBoxGetAddress.Text = addressCode.ToString("X2")));
-                    break;
-            }
-        }
-
-        private void Data_TextChanged(object sender, EventArgs e)
-        {
-
-        }
-
         private void timer1_Tick(object sender, EventArgs e)
         {
             if (!serialPort1.IsOpen)
@@ -314,6 +360,67 @@ namespace IMU
 
                 }
             }
+        }
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label2_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void textBox2_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void BtnExit_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
+        }
+
+        private void buttonConnect_Click(object sender, EventArgs e)
+        {
+            serialPort1.PortName = comboBoxCOM.Text;
+            serialPort1.BaudRate = Convert.ToInt32(comboBoxBaudRate.Text);
+            if (!serialPort1.IsOpen)
+            {
+                try
+                {
+                    serialPort1.Open();
+                    buttonConnect.Visible = false;
+                    buttonDisconnect.Visible = true;
+                    comboBoxCOM.Enabled = false;
+                    comboBoxBaudRate.Enabled = false;
+                    flagConnect = true;
+
+                }
+                catch
+                {
+                    MessageBox.Show($"Can't open {comboBoxCOM.Text}");
+                }
+            }
+        }
+
+        private void buttonDisconnect_Click(object sender, EventArgs e)
+        {
+            serialPort1.DiscardInBuffer();
+            serialPort1.DiscardOutBuffer();
+            serialPort1.Close();
+            serialPort1.Dispose();
+            buttonConnect.Visible = true;
+            buttonDisconnect.Visible = false;
+            comboBoxCOM.Enabled = true;
+            comboBoxBaudRate.Enabled = true;
+            flagConnect = false;
+        }
+
+
+        private void Data_TextChanged(object sender, EventArgs e)
+        {
+
         }
 
         private void label3_Click(object sender, EventArgs e)
@@ -403,13 +510,6 @@ namespace IMU
 
         }
 
-        double CalAngle(byte[] dataAngle)
-        {
-            double angle = 0;
-            angle = Convert.ToDouble(dataAngle[1].ToString("X2")) + Convert.ToDouble(dataAngle[2].ToString("X2"))/100;
-            return dataAngle[0] == 0x00?angle:-angle;
-        }
-
 
         private void checkBoxActivate_CheckedChanged(object sender, EventArgs e)
         {
@@ -421,60 +521,6 @@ namespace IMU
         {
             richTextBoxSend.Clear();
 
-        }
-
-        void sendData(string strHex)
-        {
-            if (serialPort1.IsOpen)
-            {
-                try
-                {
-                    // Convert the user's string of hex digits (ex: B4 CA E2) to a byte array
-                    byte[] data = HexStringToByteArray(strHex);
-                    //txtSendData.Show();
-                    // Send the binary data out the port
-                    serialPort1.Write(data, 0, data.Length);
-
-                    // Show the hex digits on in the terminal window
-                    DateTime dt = DateTime.Now;
-                    String dtn = dt.ToShortTimeString();
-                    Log(LogMsgType.Outgoing, "[" + dtn + "] " + "Send: " + ByteArrayToHexString(data) + "\n", "SEND");
-
-                }
-                catch (FormatException)
-                {
-                    // Inform the user if the hex string was not properly formatted
-                    Log(LogMsgType.Error, "Not properly formatted hex string: " + richTextBoxSend.Text + "\n", "SEND");
-                }
-            }
-            else
-                MessageBox.Show("Please open the serial port!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-        void sendData(byte[] byteHext)
-        {
-            if (serialPort1.IsOpen)
-            {
-                try
-                {
-                    // Convert the user's string of hex digits (ex: B4 CA E2) to a byte array
-                    //txtSendData.Show();
-                    // Send the binary data out the port
-                    serialPort1.Write(byteHext, 0, byteHext.Length);
-
-                    // Show the hex digits on in the terminal window
-                    DateTime dt = DateTime.Now;
-                    String dtn = dt.ToShortTimeString();
-                    Log(LogMsgType.Outgoing, "[" + dtn + "] " + "Send: " + ByteArrayToHexString(byteHext) + "\n", "SEND");
-
-                }
-                catch (FormatException)
-                {
-                    // Inform the user if the hex string was not properly formatted
-                    Log(LogMsgType.Error, "Not properly formatted hex string: " + richTextBoxSend.Text + "\n", "SEND");
-                }
-            }
-            else
-                MessageBox.Show("Please open the serial port!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         private void buttonSend_Click(object sender, EventArgs e)
