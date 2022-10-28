@@ -37,6 +37,10 @@ namespace IMU
         int checksum;
         private readonly Color[] LogMsgTypeColor = { Color.Blue, Color.Green, Color.Black, Color.Orange, Color.Red };
         double XValue = 0, YValue=0, ZValue=0;
+        double XAngle = 0, YAngle = 0, ZAngle = 0;
+        double XAcc = 0, YAcc = 0, ZAcc = 0;
+        double XVelocity = 0, YVelocity = 0, ZVelocity = 0;
+        double[] Quaternion = new double[4];
         //int i=0;
         //DateTime time;
         //Stopwatch sw = new Stopwatch();
@@ -227,18 +231,25 @@ namespace IMU
         }
 
 
-        private double CalAngle(byte[] dataAngle)
+        private double CalAngle(byte[] data)
         {
             double angle = 0;
-            angle = Convert.ToDouble(dataAngle[1].ToString("X2")[1])*100+Convert.ToDouble(dataAngle[1].ToString("X2")) + Convert.ToDouble(dataAngle[2].ToString("X2")) / 100;
-            return dataAngle[0]>>4 == 0x0 ? angle : -angle;
+            angle = Convert.ToDouble(data[1].ToString("X2")[1])*100+Convert.ToDouble(data[1].ToString("X2")) + Convert.ToDouble(data[2].ToString("X2")) / 100;
+            return data[0]>>4 == 0x0 ? angle : -angle;
         }
 
-        private double CalAcc(byte[] dataAngle)
+        private double CalAcc(byte[] data)
         {
             double acc = 0;
-            acc = Convert.ToDouble(dataAngle[1].ToString("X2")[1])+ Convert.ToDouble(dataAngle[1].ToString("X2"))/100 + Convert.ToDouble(dataAngle[2].ToString("X2")) / 10000;
-            return dataAngle[0]>>4 == 0x0 ? acc : -acc;
+            acc = Convert.ToDouble(data[1].ToString("X2")[1])+ Convert.ToDouble(data[1].ToString("X2"))/100 + Convert.ToDouble(data[2].ToString("X2")) / 10000;
+            return data[0]>>4 == 0x0 ? acc : -acc;
+        }
+        private double CalQuat(byte[] data)
+        {
+            double acc = 0;
+            acc = Convert.ToDouble(data[1].ToString("X2")[1]) + Convert.ToDouble(data[1].ToString("X2")) / 100 + Convert.ToDouble(data[2].ToString("X2")) / 10000
+                + Convert.ToDouble(data[3].ToString("X2")) / 1000000;
+            return data[0] >> 4 == 0x0 ? acc : -acc;
         }
 
         private void processingData(DataFrame dataRx)
@@ -255,9 +266,9 @@ namespace IMU
                     break;
                 //2.4 read axises angle
                 case 0x84: 
-                    XValue = CalAngle(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
-                    YValue = CalAngle(new byte[] { dataRx.Data[3], dataRx.Data[4], dataRx.Data[5] });
-                    ZValue = CalAngle(new byte[] { dataRx.Data[6], dataRx.Data[7], dataRx.Data[8] });
+                    XAngle = CalAngle(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
+                    YAngle = CalAngle(new byte[] { dataRx.Data[3], dataRx.Data[4], dataRx.Data[5] });
+                    ZAngle = CalAngle(new byte[] { dataRx.Data[6], dataRx.Data[7], dataRx.Data[8] });
                     flagUpdateAxis = true;
                     break;
                 //2.5 Set baudrate
@@ -279,19 +290,56 @@ namespace IMU
                     break;
                 //2.8 Query gravitational acceleration g
                 case 0x54:
-                    XValue = CalAcc(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
-                    YValue = CalAcc(new byte[] { dataRx.Data[3], dataRx.Data[4], dataRx.Data[5] });
-                    ZValue = CalAcc(new byte[] { dataRx.Data[6], dataRx.Data[7], dataRx.Data[8] });
+                    XAcc = CalAcc(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
+                    YAcc = CalAcc(new byte[] { dataRx.Data[3], dataRx.Data[4], dataRx.Data[5] });
+                    ZAcc = CalAcc(new byte[] { dataRx.Data[6], dataRx.Data[7], dataRx.Data[8] });
                     flagUpdateAxis = true;
                     break;
                 //2.9 Query angular velocity
                 case 0x50:
-                    XValue = CalAngle(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
-                    YValue = CalAngle(new byte[] { dataRx.Data[3], dataRx.Data[4], dataRx.Data[5] });
-                    ZValue = CalAngle(new byte[] { dataRx.Data[6], dataRx.Data[7], dataRx.Data[8] });
+                    XVelocity = CalAngle(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
+                    YVelocity = CalAngle(new byte[] { dataRx.Data[3], dataRx.Data[4], dataRx.Data[5] });
+                    ZVelocity = CalAngle(new byte[] { dataRx.Data[6], dataRx.Data[7], dataRx.Data[8] });
                     flagUpdateAxis = true;
                     break;
-                //2.10 
+                //2.10 Save setting
+                case 0x8A:
+                    flagSuccess = (dataRx.Data[0] == 0x00) ? true : false;
+                    break;
+                //2.11 Quaternion
+                case 0x57:
+                    Quaternion[0] = CalQuat(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2], dataRx.Data[3] });
+                    Quaternion[1] = CalQuat(new byte[] { dataRx.Data[4], dataRx.Data[5], dataRx.Data[6], dataRx.Data[7] });
+                    Quaternion[2] = CalQuat(new byte[] { dataRx.Data[8], dataRx.Data[8], dataRx.Data[9], dataRx.Data[10] });
+                    Quaternion[3] = CalQuat(new byte[] { dataRx.Data[12], dataRx.Data[13], dataRx.Data[14], dataRx.Data[15] });
+                    flagUpdateAxis = true;
+                    break;
+                //2.12.Simultaneous reading all
+                case 0x2F:
+                    XAngle = CalAngle(new byte[] { dataRx.Data[0], dataRx.Data[1], dataRx.Data[2] });
+                    YAngle = CalAngle(new byte[] { dataRx.Data[3], dataRx.Data[4], dataRx.Data[5] });
+                    ZAngle = CalAngle(new byte[] { dataRx.Data[6], dataRx.Data[7], dataRx.Data[8] });
+
+                    XAcc = CalAcc(new byte[] { dataRx.Data[9], dataRx.Data[10], dataRx.Data[11] });
+                    YAcc = CalAcc(new byte[] { dataRx.Data[12], dataRx.Data[13], dataRx.Data[14] });
+                    ZAcc = CalAcc(new byte[] { dataRx.Data[15], dataRx.Data[16], dataRx.Data[17] });
+
+                    XVelocity = CalAngle(new byte[] { dataRx.Data[18], dataRx.Data[19], dataRx.Data[20] });
+                    YVelocity = CalAngle(new byte[] { dataRx.Data[21], dataRx.Data[22], dataRx.Data[23] });
+                    ZVelocity = CalAngle(new byte[] { dataRx.Data[24], dataRx.Data[25], dataRx.Data[26] });
+
+                    Quaternion[0] = CalQuat(new byte[] { dataRx.Data[27], dataRx.Data[28], dataRx.Data[29], dataRx.Data[30] });
+                    Quaternion[1] = CalQuat(new byte[] { dataRx.Data[31], dataRx.Data[32], dataRx.Data[33], dataRx.Data[34] });
+                    Quaternion[2] = CalQuat(new byte[] { dataRx.Data[35], dataRx.Data[36], dataRx.Data[37], dataRx.Data[38] });
+                    Quaternion[3] = CalQuat(new byte[] { dataRx.Data[39], dataRx.Data[40], dataRx.Data[41], dataRx.Data[42] });
+                    
+                    flagUpdateAxis = true;
+
+                    break;
+                //2.13 Automatic output data type selection
+                case 0x56:
+                    break;
+
 
             }
         }
